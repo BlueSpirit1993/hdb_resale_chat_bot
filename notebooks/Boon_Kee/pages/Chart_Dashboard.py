@@ -13,7 +13,7 @@ from hdb_charts import plot_pricePerMonth_all
 from hdb_charts import plot_pricePerMonth_single
 from hdb_charts import plot_priceTrend_all
 from hdb_charts import plot_priceTrend_single
-
+from hdb_charts import data_resale_price_single
 
 st.title("HDB buying & selling companion")
 
@@ -33,6 +33,10 @@ st.markdown("\n\n\n")
 
 # Call the plotting function and display the plot
 if selected_room and selected_town:
+    price_summary_df = data_resale_price_single(df, selected_room, selected_town)
+    st.markdown("\n\n\n")
+    st.write(price_summary_df)
+
     chart1 = plot_priceTrend_single(df, selected_room, selected_town)
     st.markdown("\n\n\n")
     st.pyplot(chart1)

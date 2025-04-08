@@ -113,7 +113,7 @@ def plot_resale_price_all(df):
         errorbar=None,
         order=town_order,
     )
-    g.fig.suptitle("Mean Resale Price across different town", y=1.01, fontsize=21)
+    g.fig.suptitle("Mean Resale Price across different town", y=1.03, fontsize=21)
     g.set(xlabel="Town", ylabel="Resale Price")
     g.ax.set_xlabel(
         g.ax.get_xlabel(), fontsize=20
@@ -159,7 +159,7 @@ def plot_resale_price_single(df, twn):       ##changes: added df
         palette="bright",
     )
     g.fig.suptitle(
-        f"Mean Resale Price across {twn} and different flat type", y=1.01, fontsize=19
+        f"Mean Resale Price across {twn} and different flat type", y=1.03, fontsize=19
     )
     g.set(xlabel="Town", ylabel="Resale Price")
 
@@ -224,7 +224,7 @@ def plot_pricePerMonth_single(df, room, twn):
     sns.set_palette("bright")
     # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
     g = sns.catplot(
-        data=df,
+        data=df_query,
         x="month_of_sales",
         y="resale_price",
         kind="bar",
@@ -234,7 +234,7 @@ def plot_pricePerMonth_single(df, room, twn):
     )
     g.fig.suptitle(
         f"Mean Resale Price per month across {twn} and flat type: {room}",
-        y=1.02,
+        y=1.03,
         fontsize=12,
     )
     g.set(xlabel="Month of Sales", ylabel="Resale Price")
@@ -332,3 +332,27 @@ def plot_priceTrend_single(df, room, twn):
     g.ax.yaxis.set_major_formatter(formatter)
 
     return g
+
+# mean resale price summary of single town and room
+
+def data_resale_price_single(df, room, twn):
+    df_initial_preproc(df)
+    df_query = df.query("flat_type == @room & town == @twn")
+    price_summary_series = df_query["resale_price"].agg(["max", "min", "mean"])
+    # Convert the Series to a DataFrame
+    price_summary_df = (
+        (
+            price_summary_series.to_frame(
+                name=f"Resale price summary of {twn}, {room} flat"
+            )
+        )
+        .round()
+        .astype(int)
+    )
+
+    # Apply the formatting to the column
+    price_summary_df[price_summary_df.columns[0]] = price_summary_df[
+        price_summary_df.columns[0]
+    ].apply(lambda x: "{:,}".format(x))
+
+    return price_summary_df
