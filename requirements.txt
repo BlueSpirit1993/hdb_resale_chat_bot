@@ -6,3 +6,9 @@ ruff
 tqdm
 typer
 -e .
+streamlit
+pandas
+matplotlib
+seaborn
+openai
+python-dotenv
