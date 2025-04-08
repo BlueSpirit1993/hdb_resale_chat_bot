@@ -17,12 +17,10 @@ import json
 import openai
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
-# Load environment variables from .env file
-load_dotenv()
+openai.api_key = st.secrets["openai"]["api_key"]
 
-# Get the API key from the environment
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 df = pd.read_csv(
     "data_concat.csv", header=0, parse_dates=["month"],low_memory=False
