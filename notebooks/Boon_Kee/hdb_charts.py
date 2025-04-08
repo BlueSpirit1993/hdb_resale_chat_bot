@@ -11,8 +11,7 @@ def df_initial_preproc(df):
     df["month_of_sales"] = df["month"].dt.month
     # Clean up the 'MULTI-GENERATION' entries
     df["flat_type"] = df["flat_type"].str.replace(
-        "MULTI GENERATION", "MULTI-GENERATION"
-    )
+        "MULTI GENERATION", "MULTI-GENERATION")
     # add price per sqm
     df["price_per_sqm"] = df.resale_price / df.floor_area_sqm
 
@@ -31,7 +30,7 @@ def plot_sqm_all_town(df):
         errorbar=None,
     )
     g.fig.suptitle("Price Per Square Meter across different town", y=1.02, fontsize=15)
-    g.set(xlabel="Town", ylabel="Price Per Square Meter")
+    g.set(xlabel="Price Per Square Meter", ylabel="Town")
 
     g.ax.set_xlabel(
         g.ax.get_xlabel(), fontsize=14
@@ -42,7 +41,11 @@ def plot_sqm_all_town(df):
     )  # Access and set y-axis label font size
 
     plt.xticks(rotation=0)
-    plt.show()
+
+    # Format the x-axis tick labels to include commas using a lambda function
+    formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
+    g.ax.xaxis.set_major_formatter(formatter)
+    return g
 
 # price per sqm across single town and flat type
 def plot_sqm_single_twn_room(df, room, twn):
@@ -78,7 +81,7 @@ def plot_sqm_single_twn_room(df, room, twn):
     # Format the y-axis tick labels to include commas using a lambda function
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
-    plt.show()
+    return g
 
 # mean resale price across different town
 def plot_resale_price_all(df):
@@ -117,14 +120,13 @@ def plot_resale_price_all(df):
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
 
 
 # mean resale price across single town and different flat type
 def plot_resale_price_single(twn):
     df_initial_preproc(df)
     df_query = df.query("town == @twn")
-    plt.clf()
     sns.set_style("whitegrid")
     sns.set_palette("bright")
     hue_order = [
@@ -167,7 +169,7 @@ def plot_resale_price_single(twn):
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
 
 # mean resale price per month across all town
 def plot_pricePerMonth_all(df):
@@ -203,7 +205,7 @@ def plot_pricePerMonth_all(df):
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
 
 
 # mean resale price per month across single town
@@ -240,7 +242,7 @@ def plot_pricePerMonth_single(df, room, twn):
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
 
 
 # resale price trend across all town
@@ -286,7 +288,7 @@ def plot_priceTrend_all(df):
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
 
 
 # resale price trend across single town and flat type
@@ -321,4 +323,4 @@ def plot_priceTrend_single(df, room, twn):
 
     g.ax.yaxis.set_major_formatter(formatter)
 
-    plt.show()
+    return g
