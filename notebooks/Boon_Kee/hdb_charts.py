@@ -179,7 +179,7 @@ def plot_resale_price_single(df, twn):       ##changes: added df
 
     return g
 
-# mean resale price per month across all town
+# mean resale price of each month across all town
 def plot_pricePerMonth_all(df):
     df_initial_preproc(df)
     sns.set_style("ticks")
@@ -195,7 +195,7 @@ def plot_pricePerMonth_all(df):
         errorbar=None,
     )
     g.fig.suptitle(
-        "Mean resale Price per month across all town and flat type",
+        "Mean resale Price of each month across all town and flat type",
         y=1.02,
         fontsize=12,
     )
@@ -216,7 +216,7 @@ def plot_pricePerMonth_all(df):
     return g
 
 
-# mean resale price per month across single town
+# mean resale price of each month across single town
 def plot_pricePerMonth_single(df, room, twn):
     df_initial_preproc(df)
     df_query = df.query("flat_type == @room & town == @twn")
@@ -233,7 +233,7 @@ def plot_pricePerMonth_single(df, room, twn):
         errorbar=None,
     )
     g.fig.suptitle(
-        f"Mean Resale Price per month across {twn} and flat type: {room}",
+        f"Mean Resale Price of each month across {twn} and flat type: {room}",
         y=1.03,
         fontsize=12,
     )
@@ -333,8 +333,7 @@ def plot_priceTrend_single(df, room, twn):
 
     return g
 
-# mean resale price summary of single town and room
-
+# summary of mean resale price across single town and room
 def data_resale_price_single(df, room, twn):
     df_initial_preproc(df)
     df_query = df.query("flat_type == @room & town == @twn")
@@ -343,7 +342,30 @@ def data_resale_price_single(df, room, twn):
     price_summary_df = (
         (
             price_summary_series.to_frame(
-                name=f"Resale price summary of {twn}, {room} flat"
+                name="Resale price (SGD)"
+            )
+        )
+        .round()
+        .astype(int)
+    )
+
+    # Apply the formatting to the column
+    price_summary_df[price_summary_df.columns[0]] = price_summary_df[
+        price_summary_df.columns[0]
+    ].apply(lambda x: "{:,}".format(x))
+
+    return price_summary_df
+
+# summary of price per sqm across single town and room
+def data_sqm_single_twn_room(df, room, twn):
+    df_initial_preproc(df)
+    df_query = df.query("flat_type == @room & town == @twn")
+    price_summary_series = df_query["price_per_sqm"].agg(["max", "min", "mean"])
+    # Convert the Series to a DataFrame
+    price_summary_df = (
+        (
+            price_summary_series.to_frame(
+                name="Price Per Square Meter (SGD)"
             )
         )
         .round()
