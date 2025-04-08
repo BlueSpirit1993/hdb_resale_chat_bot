@@ -20,24 +20,32 @@ def plot_sqm_all_town(df):
     df_initial_preproc(df)
     sns.set_style("whitegrid")
     sns.set_palette("bright")
+
+    # Calculate the mean resale price for each town
+    mean_prices = df.groupby("town")["price_per_sqm"].mean().sort_values()
+
+    # Create a new categorical order based on the sorted mean prices
+    town_order = mean_prices.index.tolist()
+
     g = sns.catplot(
         data=df,
         x="price_per_sqm",
         y="town",
         kind="bar",
-        height=7,
+        height=6.5,
         aspect=1,
         errorbar=None,
+        order=town_order,
     )
-    g.fig.suptitle("Price Per Square Meter across different town", y=1.02, fontsize=15)
+    g.fig.suptitle("Price Per Square Meter across different town", y=1.03, fontsize=11)
     g.set(xlabel="Price Per Square Meter", ylabel="Town")
 
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=14
+        g.ax.get_xlabel(), fontsize=10
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=14
+        g.ax.get_ylabel(), fontsize=10
     )  # Access and set y-axis label font size
 
     plt.xticks(rotation=0)
@@ -66,15 +74,15 @@ def plot_sqm_single_twn_room(df, room, twn):
     g.fig.suptitle(
         f"Price Per Square Meter across {twn} and flat type: {room}",
         y=1.01,
-        fontsize=18,
+        fontsize=20,
     )
     g.set(xlabel="Year of sales", ylabel="Price Per Square Meter")
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=16
+        g.ax.get_xlabel(), fontsize=19
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=16
+        g.ax.get_ylabel(), fontsize=19
     )  # Access and set y-axis label font size
     plt.xticks(rotation=45)
 
@@ -105,14 +113,14 @@ def plot_resale_price_all(df):
         errorbar=None,
         order=town_order,
     )
-    g.fig.suptitle("Mean Resale Price across different town", y=1.01, fontsize=16)
+    g.fig.suptitle("Mean Resale Price across different town", y=1.01, fontsize=21)
     g.set(xlabel="Town", ylabel="Resale Price")
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=15
+        g.ax.get_xlabel(), fontsize=20
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=15
+        g.ax.get_ylabel(), fontsize=20
     )  # Access and set y-axis label font size
     plt.xticks(rotation=90)
 
@@ -124,7 +132,7 @@ def plot_resale_price_all(df):
 
 
 # mean resale price across single town and different flat type
-def plot_resale_price_single(twn):
+def plot_resale_price_single(df, twn):       ##changes: added df
     df_initial_preproc(df)
     df_query = df.query("town == @twn")
     sns.set_style("whitegrid")
@@ -151,16 +159,16 @@ def plot_resale_price_single(twn):
         palette="bright",
     )
     g.fig.suptitle(
-        f"Mean Resale Price across {twn} and different flat type", y=1.01, fontsize=16
+        f"Mean Resale Price across {twn} and different flat type", y=1.01, fontsize=19
     )
     g.set(xlabel="Town", ylabel="Resale Price")
 
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=15
+        g.ax.get_xlabel(), fontsize=18
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=15
+        g.ax.get_ylabel(), fontsize=18
     )  # Access and set y-axis label font size
 
     plt.xticks(rotation=0)
@@ -183,22 +191,22 @@ def plot_pricePerMonth_all(df):
         y="resale_price",
         kind="bar",
         height=5,
-        aspect=2,
+        aspect=1.5,
         errorbar=None,
     )
     g.fig.suptitle(
-        "Mean resale Price per month across different town and flat type",
-        y=1.01,
-        fontsize=16,
+        "Mean resale Price per month across all town and flat type",
+        y=1.02,
+        fontsize=12,
     )
     g.set(xlabel="Month of Sales", ylabel="Resale Price")
 
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=15
+        g.ax.get_xlabel(), fontsize=11
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=15
+        g.ax.get_ylabel(), fontsize=11
     )  # Access and set y-axis label font size
 
     # Format the y-axis tick labels to include commas using a lambda function
@@ -225,17 +233,17 @@ def plot_pricePerMonth_single(df, room, twn):
         errorbar=None,
     )
     g.fig.suptitle(
-        f"Resale Price per month across {twn} and flat type: {room}",
-        y=1.01,
-        fontsize=15,
+        f"Mean Resale Price per month across {twn} and flat type: {room}",
+        y=1.02,
+        fontsize=12,
     )
     g.set(xlabel="Month of Sales", ylabel="Resale Price")
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=14
+        g.ax.get_xlabel(), fontsize=11
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=14
+        g.ax.get_ylabel(), fontsize=11
     )  # Access and set y-axis label font size
 
     # Format the y-axis tick labels to include commas using a lambda function
@@ -271,15 +279,15 @@ def plot_priceTrend_all(df):
         hue="flat_type",
         hue_order=hue_order,
     )
-    g.fig.suptitle(f"Resale price trend across all town", y=1.01, fontsize=17)
+    g.fig.suptitle(f"Resale price trend across all town", y=1.01, fontsize=20)
     g.set(xlabel="Year", ylabel="Resale Price")
 
     g.ax.set_xlabel(
-        g.ax.get_xlabel(), fontsize=16
+        g.ax.get_xlabel(), fontsize=19
     )  # Access and set x-axis label font size
 
     g.ax.set_ylabel(
-        g.ax.get_ylabel(), fontsize=16
+        g.ax.get_ylabel(), fontsize=19
     )  # Access and set y-axis label font size
 
     plt.ticklabel_format(style="plain", axis="y")
