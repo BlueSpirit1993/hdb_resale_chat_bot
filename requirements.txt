@@ -12,3 +12,4 @@ matplotlib
 seaborn
 openai
 python-dotenv
+langchain

@@ -18,8 +18,15 @@ import openai
 import os
 from dotenv import load_dotenv
 import streamlit as st
+from langchain.vectorstores import Chroma
 
 openai.api_key = st.secrets["openai"]["api_key"]
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain.chains.question_answering import load_qa_chain
 
 
 df = pd.read_csv(
@@ -161,10 +168,55 @@ if user_input!=None:
                     },
                     "required": ["flat_type","town"],
                 },
+            },
+            {
+                "name": "answer_pdf_question",
+                "description": "Answer questions using the 'buy_sell_eligibility.pdf' document, where is boon kee from",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Question about HDB buying/selling eligibility ,where is boon kee from"}
+                    },
+                    "required": ["query"]
+                }
             }
+
         ],
         function_call="auto",
     )
+    
+
+
+    @st.cache_resource
+    def load_vector_db():
+        loader = PyPDFLoader("buy_sell_eligibility.pdf")
+        data = loader.load()
+        
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=400)
+        texts = text_splitter.split_documents(data)
+
+        embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
+
+        persist_directory = "chroma_db"  # folder for persistent vector DB
+
+        # Optional: Use collection name to avoid collision
+        collection_name = "pdf_eligibility"
+
+        # Initialize or reuse existing DB
+        return Chroma.from_documents(
+            documents=texts,
+            embedding=embeddings,
+            persist_directory=persist_directory,
+            collection_name=collection_name
+        )
+
+
+    def answer_pdf_question(query: str):
+        vector_db = load_vector_db()
+        llm = ChatOpenAI(temperature=0, openai_api_key=openai.api_key)
+        chain = load_qa_chain(llm, chain_type="map_reduce")
+        docs = vector_db.similarity_search(query, k=2)
+        return chain.run(input_documents=docs, question=query)
 
     def get_average_prices(town: str, flat_type: str, lease_commence_date: int):
         # Ensure column names match your dataset
@@ -513,10 +565,10 @@ if user_input!=None:
             result = plot_priceTrend_all(**args)
         elif fn_name == "plot_priceTrend_single":
             result = plot_priceTrend_single(**args)
-                        
-        print("Function called:", fn_name)
-        print("Arguments:", args)
-        print("Result:", result)
+        elif fn_name == "answer_pdf_question":
+            response = answer_pdf_question(**args)
+            st.subheader("📄 Answer from PDF")
+            st.write(response)
         
     else:
     # Send general message again without function schema
