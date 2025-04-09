@@ -18,7 +18,7 @@ import openai
 import os
 from dotenv import load_dotenv
 import streamlit as st
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import FAISS
 
 openai.api_key = st.secrets["openai"]["api_key"]
 from langchain.document_loaders import PyPDFLoader
@@ -191,25 +191,14 @@ if user_input!=None:
     def load_vector_db():
         loader = PyPDFLoader("buy_sell_eligibility.pdf")
         data = loader.load()
-        
+
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=400)
         texts = text_splitter.split_documents(data)
 
         embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
-
-        persist_directory = "chroma_db"  # folder for persistent vector DB
-
-        # Optional: Use collection name to avoid collision
-        collection_name = "pdf_eligibility"
-
-        # Initialize or reuse existing DB
-        return Chroma.from_documents(
-            documents=texts,
-            embedding=embeddings,
-            persist_directory=persist_directory,
-            collection_name=collection_name
-        )
-
+        vectorstore = FAISS.from_documents(texts, embedding=embeddings)
+        
+        return vectorstore
 
     def answer_pdf_question(query: str):
         vector_db = load_vector_db()
