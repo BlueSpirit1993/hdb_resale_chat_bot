@@ -55,7 +55,22 @@ st.header("💬 Ask the Chatbot about HDB trends")
 
 user_input = None
 user_input = st.chat_input("Ask about resale prices, trends, towns, or flat types!")
-if user_input!=None:
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if user_input:
+    # Store user's message
+
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+
+    # Prepare messages with history
+    messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
+
+    # Add current user input to the message chain
+    messages.append({"role": "user", "content": user_input})
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
     client = OpenAI(api_key=openai.api_key)
     completion = client.chat.completions.create(
         model="gpt-4o",
@@ -555,9 +570,9 @@ if user_input!=None:
         elif fn_name == "plot_priceTrend_single":
             result = plot_priceTrend_single(**args)
         elif fn_name == "answer_pdf_question":
-            response = answer_pdf_question(**args)
+            result = answer_pdf_question(**args)
             st.subheader("📄 Answer from PDF")
-            st.write(response)
+            st.write(result)
         
     else:
     # Send general message again without function schema
@@ -565,7 +580,10 @@ if user_input!=None:
             model="gpt-4o",
             messages=[{"role": "user", "content": user_input}]
         )
-        answer = general_response.choices[0].message.content
+        result = general_response.choices[0].message.content
         st.subheader("🤖 Answer")
-        st.write(answer)
+        st.write(result)
+    st.session_state.chat_history.append({"role": "assistant", "content": result})
+
+    
 
