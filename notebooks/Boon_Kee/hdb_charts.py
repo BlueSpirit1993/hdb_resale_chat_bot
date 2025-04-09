@@ -23,7 +23,7 @@ def plot_sqm_all_town(df):
     #df_query = df.query("flat_type == @room")
 
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     # Calculate the mean resale price for each town
     mean_prices = df.groupby("town")["price_per_sqm"].mean().sort_values()
@@ -66,7 +66,7 @@ def plot_sqm_all_town_2(df, room):
     df_query = df.query("flat_type == @room")
 
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     # Calculate the mean resale price for each town
     mean_prices = df_query.groupby("town")["price_per_sqm"].mean().sort_values()
@@ -107,7 +107,7 @@ def plot_sqm_single_twn_room(df, room, twn):
     #df_initial_preproc(df)
     df_query = df.query("flat_type == @room & town == @twn")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     g = sns.catplot(
         data=df_query,
@@ -142,7 +142,7 @@ def plot_sqm_single_twn_room(df, room, twn):
 def plot_resale_price_all(df):
     #df_initial_preproc(df)
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     # Calculate the mean resale price for each town
     mean_prices = df.groupby("town")["resale_price"].mean().sort_values()
@@ -182,7 +182,7 @@ def plot_resale_price_single(df, twn):       ##changes: added df
     #df_initial_preproc(df)
     df_query = df.query("town == @twn")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
     hue_order = [
         "1 ROOM",
         "2 ROOM",
@@ -230,7 +230,7 @@ def plot_resale_price_all_2(df, room):       ##changes: added df
     #df_initial_preproc(df)
     df_query = df.query("flat_type == @room")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     # Calculate the mean resale price for each town
     mean_prices = df_query.groupby("town")["resale_price"].mean().sort_values()
@@ -269,13 +269,11 @@ def plot_resale_price_all_2(df, room):       ##changes: added df
 
     return g
 
-
-
 # mean resale price of each month across all town
 def plot_pricePerMonth_all(df):
     #df_initial_preproc(df)
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
     # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
     g = sns.catplot(
         data=df,
@@ -312,7 +310,7 @@ def plot_pricePerMonth_single(df, room, twn):
     #df_initial_preproc(df)
     df_query = df.query("flat_type == @room & town == @twn")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
     # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
     g = sns.catplot(
         data=df_query,
@@ -343,11 +341,49 @@ def plot_pricePerMonth_single(df, room, twn):
 
     return g
 
+
+# mean resale price of each month across all town and selected room
+def plot_pricePerMonth_all_2(df, room):
+    #df_initial_preproc(df)
+    df_query = df.query("flat_type == @room")
+    sns.set_style("whitegrid")
+    sns.set_palette("RdBu")
+    # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
+    g = sns.catplot(
+        data=df_query,
+        x="month_of_sales",
+        y="resale_price",
+        kind="bar",
+        height=5,
+        aspect=1.5,
+        errorbar=None,
+    )
+    g.fig.suptitle(
+        f"Mean Resale Price of each month across all town and flat type: {room}",
+        y=1.03,
+        fontsize=12,
+    )
+    g.set(xlabel="Month of Sales", ylabel="Resale Price")
+    g.ax.set_xlabel(
+        g.ax.get_xlabel(), fontsize=11
+    )  # Access and set x-axis label font size
+
+    g.ax.set_ylabel(
+        g.ax.get_ylabel(), fontsize=11
+    )  # Access and set y-axis label font size
+
+    # Format the y-axis tick labels to include commas using a lambda function
+    formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
+    g.ax.yaxis.set_major_formatter(formatter)
+
+    return g
+
+
 # resale price trend across all town
 def plot_priceTrend_all(df):
     #df_initial_preproc(df)
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
     hue_order = [
         "1 ROOM",
         "2 ROOM",
@@ -393,7 +429,7 @@ def plot_priceTrend_single(df, room, twn):
     #df_initial_preproc(df)
     df_query = df.query("flat_type == @room & town == @twn")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
     g = sns.relplot(
         data=df_query,
         x="month",
@@ -427,7 +463,7 @@ def plot_priceTrend_allFlat(df, twn):
     #df_initial_preproc(df)
     df_query = df.query("town == @twn")
     sns.set_style("whitegrid")
-    sns.set_palette("bright")
+    sns.set_palette("RdBu")
 
     hue_order = [
         "1 ROOM",
@@ -515,3 +551,15 @@ def data_sqm_single_twn_room(df, room, twn):
     ].apply(lambda x: "{:,}".format(x))
 
     return price_summary_df
+
+# last resale price of selected town and room
+def data_last_resale_price(df, room, twn):
+
+    df_query = df.query("flat_type == @room & town == @twn")
+
+    df_last_resale_price = df_query.sort_index(ascending=False)
+    last_resale_price = df_last_resale_price.iloc[0]["resale_price"]
+
+    formatted_price = "{:,}".format(int(round(last_resale_price)))
+
+    return formatted_price
