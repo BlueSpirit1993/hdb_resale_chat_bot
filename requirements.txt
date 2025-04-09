@@ -16,4 +16,3 @@ langchain-community
 langchain_openai
 pypdf
 chromadb
-sqlite3
