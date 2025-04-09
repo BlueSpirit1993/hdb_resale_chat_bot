@@ -15,4 +15,4 @@ python-dotenv
 langchain-community
 langchain_openai
 pypdf
-FAISS
+faiss-cpu
