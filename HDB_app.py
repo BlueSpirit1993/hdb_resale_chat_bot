@@ -489,8 +489,6 @@ if user_input!=None:
         st.pyplot(g.fig)
 
 
-    args = json.loads(completion.choices[0].message.function_call.arguments)
-    print(args)
     message = completion.choices[0].message
 
     if message.function_call is not None:
@@ -519,7 +517,14 @@ if user_input!=None:
         print("Function called:", fn_name)
         print("Arguments:", args)
         print("Result:", result)
+        
     else:
-        st.write("🤖 ChatGPT responded with text only:")
-        st.write(message.content)
+    # Send general message again without function schema
+        general_response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": user_input}]
+        )
+        answer = general_response.choices[0].message.content
+        st.subheader("🤖 Answer")
+        st.write(answer)
 
