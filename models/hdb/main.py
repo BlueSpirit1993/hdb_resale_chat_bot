@@ -4,6 +4,57 @@ import pickle
 import requests
 from sklearn.neighbors import BallTree
 
+def preprocess_and_reconstruct_named(X):
+    numeric_cols = [
+        "floor_area_sqm",
+        "remaining_lease_year",
+        "distance_to_nearest_sch",
+        "distance_to_nearest_mrt",
+    ]
+    categorical_cols = [
+        "block",
+        "street_name",
+        "town",
+        "flat_type",
+        "region",
+        "storey_range",
+        "line",
+        "nearest_mrt_name",
+        "nearest_sch_name",
+    ]
+    date_cols = ["month_sin", "month_cos", "salesYear_fr_2017"]
+
+    columns = numeric_cols + categorical_cols + date_cols
+
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.compose import ColumnTransformer
+
+    imputed_num = Pipeline([
+        ("imputer", SimpleImputer(strategy="mean"))
+    ])
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("imputed_num", imputed_num, numeric_cols),
+            ("keep_cats", "passthrough", categorical_cols),
+            ("keep_dates", "passthrough", date_cols),
+        ]
+    )
+
+    X_processed = preprocessor.fit_transform(X)
+    df_processed = pd.DataFrame(X_processed, columns=columns)
+
+    for col in numeric_cols:
+        df_processed[col] = pd.to_numeric(df_processed[col], errors="coerce")
+    for col in date_cols:
+        df_processed[col] = pd.to_numeric(df_processed[col], errors="coerce")
+    for col in categorical_cols:
+        df_processed[col] = df_processed[col].astype("category")
+
+    return df_processed
+
+
 class Model:
     def __init__(self):
         self.categorical_cols = [
@@ -81,9 +132,11 @@ class Model:
         }
         response = requests.get(url, params=params)
         data = response.json()
-        result = data["results"][0]
+        results = data.get("results", [])
+
         if not results:
             raise ValueError(f"No coordinates found for address: {add}")
+
         result = results[0]
         return float(result["LATITUDE"]), float(result["LONGITUDE"])
 
@@ -192,3 +245,27 @@ class Model:
     def get_preds(self, user_query):
         x = self.preprocess(user_query)
         return self.pipeline.predict(x.to_frame().T)
+
+if __name__ == "__main__":
+    from sklearn.preprocessing import FunctionTransformer
+    from sklearn.pipeline import Pipeline
+    from lightgbm import LGBMRegressor
+    import pickle
+
+    wrapped_preprocessor = FunctionTransformer(preprocess_and_reconstruct_named, validate=False)
+
+    pipeline = Pipeline([
+        ("preprocessor", wrapped_preprocessor),
+        ("model", LGBMRegressor(
+            max_depth=15,
+            n_estimators=300,
+            learning_rate=0.1,
+            objective="regression",
+            min_child_samples=20,
+            random_state=42,
+        ))
+    ])
+
+    # Save it here so it's registered under main module
+    with open("lightgbm_pipeline.pkl", "wb") as f:
+        pickle.dump(pipeline, f)
