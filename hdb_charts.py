@@ -6,6 +6,46 @@ import matplotlib.ticker as mtick
 import seaborn as sns
 
 def df_initial_preproc(df):
+    town_mapping = {
+    "TAMPINES": "Tampines",
+    "YISHUN": "Yishun",
+    "JURONG WEST": "Jurong West",
+    "BEDOK": "Bedok",
+    "WOODLANDS": "Woodlands",
+    "ANG MO KIO": "Ang Mo Kio",
+    "HOUGANG": "Hougang",
+    "BUKIT BATOK": "Bukit Batok",
+    "CHOA CHU KANG": "Choa Chu Kang",
+    "BUKIT MERAH": "Bukit Merah",
+    "SENGKANG": "Sengkang",
+    "PASIR RIS": "Pasir Ris",
+    "TOA PAYOH": "Toa Payoh",
+    "QUEENSTOWN": "Queenstown",
+    "GEYLANG": "Geylang",
+    "CLEMENTI": "Clementi",
+    "BUKIT PANJANG": "Bukit Panjang",
+    "KALLANG/WHAMPOA": "Kallang_Whampoa",
+    "JURONG EAST": "Jurong East",
+    "SERANGOON": "Serangoon",
+    "PUNGGOL": "Punggol",
+    "BISHAN": "Bishan",
+    "SEMBAWANG": "Sembawang",
+    "MARINE PARADE": "Marine Parade",
+    "CENTRAL AREA": "Central Area",
+    "BUKIT TIMAH": "Bukit Timah",
+    "LIM CHU KANG": "Lim Chu Kang",
+    }
+
+    room_mapping = {
+    "1 ROOM": "1 room",
+    "2 ROOM": "2 room",
+    "3 ROOM": "3 room",
+    "4 ROOM": "4 room",
+    "5 ROOM": "5 room",
+    "EXECUTIVE": "Executive",
+    "MULTI-GENERATION": "Multi-Gen",
+    }
+
     df.month = pd.to_datetime(df.month)
     df["year_of_sales"] = df["month"].dt.year
     df["month_of_sales"] = df["month"].dt.month
@@ -14,6 +54,14 @@ def df_initial_preproc(df):
         "MULTI GENERATION", "MULTI-GENERATION")
     # add price per sqm
     df["price_per_sqm"] = df.resale_price / df.floor_area_sqm
+
+    # change town and flat_type name to lower cap
+    df["town_map"] = df["town"].map(town_mapping)
+    df["flat_type_map"] = df["flat_type"].map(room_mapping)
+
+    df.drop(["town", "flat_type"], axis=1, inplace=True)
+    df.rename(columns={"town_map": "town", "flat_type_map": "flat_type"}, inplace=True)
+
     return df
 
 # price per sqm across different town and all flat type
@@ -109,11 +157,11 @@ def plot_sqm_single_twn_room(df, room, twn):
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
 
-    g = sns.catplot(
+    g = sns.relplot(
         data=df_query,
         x="year_of_sales",
         y="price_per_sqm",
-        kind="bar",
+        kind="line",
         height=5,
         aspect=2,
         errorbar=None,
@@ -131,7 +179,7 @@ def plot_sqm_single_twn_room(df, room, twn):
     g.ax.set_ylabel(
         g.ax.get_ylabel(), fontsize=16
     )  # Access and set y-axis label font size
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=0)
 
     # Format the y-axis tick labels to include commas using a lambda function
     formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
@@ -184,13 +232,13 @@ def plot_resale_price_single(df, twn):       ##changes: added df
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
     hue_order = [
-        "1 ROOM",
-        "2 ROOM",
-        "3 ROOM",
-        "4 ROOM",
-        "5 ROOM",
-        "EXECUTIVE",
-        "MULTI-GENERATION",
+        "1 room",
+        "2 room",
+        "3 room",
+        "4 room",
+        "5 room",
+        "Executive",
+        "Multi-Gen",
     ]
     g = sns.catplot(
         data=df_query,
@@ -274,7 +322,7 @@ def plot_pricePerMonth_all(df):
     #df_initial_preproc(df)
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
-    # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
+
     g = sns.catplot(
         data=df,
         x="month_of_sales",
@@ -311,7 +359,7 @@ def plot_pricePerMonth_single(df, room, twn):
     df_query = df.query("flat_type == @room & town == @twn")
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
-    # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
+
     g = sns.catplot(
         data=df_query,
         x="month_of_sales",
@@ -348,7 +396,7 @@ def plot_pricePerMonth_all_2(df, room):
     df_query = df.query("flat_type == @room")
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
-    # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
+
     g = sns.catplot(
         data=df_query,
         x="month_of_sales",
@@ -385,13 +433,13 @@ def plot_priceTrend_all(df):
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
     hue_order = [
-        "1 ROOM",
-        "2 ROOM",
-        "3 ROOM",
-        "4 ROOM",
-        "5 ROOM",
-        "EXECUTIVE",
-        "MULTI-GENERATION",
+        "1 room",
+        "2 room",
+        "3 room",
+        "4 room",
+        "5 room",
+        "Executive",
+        "Multi-Gen",
     ]
     g = sns.relplot(
         data=df,
@@ -466,13 +514,13 @@ def plot_priceTrend_allFlat(df, twn):
     sns.set_palette("RdBu")
 
     hue_order = [
-        "1 ROOM",
-        "2 ROOM",
-        "3 ROOM",
-        "4 ROOM",
-        "5 ROOM",
-        "EXECUTIVE",
-        "MULTI-GENERATION",
+        "1 room",
+        "2 room",
+        "3 room",
+        "4 room",
+        "5 room",
+        "Executive",
+        "Multi-Gen",
     ]
 
     g = sns.relplot(
@@ -525,7 +573,7 @@ def data_resale_price_single(df, room, twn):
     # Apply the formatting to the column
     price_summary_df[price_summary_df.columns[0]] = price_summary_df[
         price_summary_df.columns[0]
-    ].apply(lambda x: "{:,}".format(x))
+    ].apply(lambda x: "${:,}".format(x))
 
     return price_summary_df
 
@@ -548,7 +596,7 @@ def data_sqm_single_twn_room(df, room, twn):
     # Apply the formatting to the column
     price_summary_df[price_summary_df.columns[0]] = price_summary_df[
         price_summary_df.columns[0]
-    ].apply(lambda x: "{:,}".format(x))
+    ].apply(lambda x: "${:,}".format(x))
 
     return price_summary_df
 
@@ -560,6 +608,6 @@ def data_last_resale_price(df, room, twn):
     df_last_resale_price = df_query.sort_index(ascending=False)
     last_resale_price = df_last_resale_price.iloc[0]["resale_price"]
 
-    formatted_price = "{:,}".format(int(round(last_resale_price)))
+    formatted_price = "${:,}".format(int(round(last_resale_price)))
 
     return formatted_price
