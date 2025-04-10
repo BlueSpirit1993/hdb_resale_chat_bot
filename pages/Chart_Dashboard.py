@@ -66,10 +66,10 @@ if selected_room and selected_town:
 
     with col5:
         last_resale_price = data_last_resale_price(df, selected_room, selected_town)
-        st.metric(label="Last Resale Price (SGD)", value=last_resale_price)
+        st.metric(label="Last Resale Price (SGD)", value=f"{last_resale_price}")
 
     st.markdown("\n\n\n\n\n")
-    tab1, tab2, tab3= st.tabs([f"{selected_town}", f"{selected_town}-ALL FLAT", "ALL TOWN-ALL FLAT"])
+    tab1, tab2, tab3= st.tabs([f"{selected_town}", f"{selected_town}-All Flat", "All Town-All Flat"])
     with tab1:
         chart1 = plot_priceTrend_single(df, selected_room, selected_town)
         st.markdown("\n\n\n")
@@ -87,7 +87,7 @@ if selected_room and selected_town:
 
 
     st.markdown("\n\n\n\n\n")
-    tab3, tab3a, tab4= st.tabs([f"{selected_town}", f"ALL TOWN-{selected_room}", "ALL TOWN-ALL FLAT"])
+    tab3, tab3a, tab4= st.tabs([f"{selected_town}", f"All Town-{selected_room}", "All Town-All Flat"])
     with tab3:
         chart3 = plot_resale_price_single(df, selected_town)
         st.markdown("\n\n\n")
@@ -105,7 +105,7 @@ if selected_room and selected_town:
 
 
     st.markdown("\n\n\n\n\n")
-    tab5, tab6, tab6a = st.tabs([f"{selected_town}", f"ALL TOWN-{selected_room}", f"ALL TOWN-ALL FLAT"])
+    tab5, tab6, tab6a = st.tabs([f"{selected_town}", f"All Town-{selected_room}", f"All Town-All Flat"])
     with tab5:
         chart5 = plot_sqm_single_twn_room(df, selected_room, selected_town)
         st.markdown("\n\n\n")
@@ -121,23 +121,23 @@ if selected_room and selected_town:
         st.markdown("\n\n\n")
         st.pyplot(chart6a)
 
-    st.markdown("\n\n\n\n\n")
-    tab7, tab7a, tab8= st.tabs([f"{selected_town}", f"ALL TOWN-{selected_room}", "ALL TOWN-ALL FLAT"])
-    with tab7:
-        chart7 = plot_pricePerMonth_single(df, selected_room, selected_town)
-        st.markdown("\n\n\n")
-        st.pyplot(chart7)
+    #st.markdown("\n\n\n\n\n")
+    #tab7, tab7a, tab8= st.tabs([f"{selected_town}", f"All Town-{selected_room}", "All Town-All Flat"])
+    #with tab7:
+        #chart7 = plot_pricePerMonth_single(df, selected_room, selected_town)
+        #st.markdown("\n\n\n")
+        #st.pyplot(chart7)
 
-    with tab7a:
-        chart7a = plot_pricePerMonth_all_2(df, selected_room)
-        st.markdown("\n\n\n")
-        st.pyplot(chart7a)
+    #with tab7a:
+        #chart7a = plot_pricePerMonth_all_2(df, selected_room)
+        #st.markdown("\n\n\n")
+        #st.pyplot(chart7a)
 
 
-    with tab8:
-        chart8 = plot_pricePerMonth_all(df)
-        st.markdown("\n\n\n")
-        st.pyplot(chart8)
+    #with tab8:
+        #chart8 = plot_pricePerMonth_all(df)
+        #st.markdown("\n\n\n")
+        #st.pyplot(chart8)
 
 
 else:
