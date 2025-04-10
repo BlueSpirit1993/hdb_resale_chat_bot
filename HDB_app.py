@@ -3,6 +3,27 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import io
+import base64
+from hdb_charts import (
+    df_initial_preproc,
+    plot_sqm_all_town,
+    plot_sqm_all_town_2,
+    plot_sqm_single_twn_room,
+    plot_resale_price_all,
+    plot_resale_price_single,
+    plot_resale_price_all_2,
+    plot_pricePerMonth_all,
+    plot_pricePerMonth_single,
+    plot_pricePerMonth_all_2,
+    plot_priceTrend_all,
+    plot_priceTrend_single,
+    plot_priceTrend_allFlat,
+    data_resale_price_single,
+    data_sqm_single_twn_room,
+    data_last_resale_price
+)
+
 
 
 # this package consolidates all the charting functions
@@ -33,21 +54,14 @@ df = pd.read_csv(
     "data_concat.csv", header=0, parse_dates=["month"],low_memory=False
 )
 
-
-def df_initial_preproc(df):
-    df.month = pd.to_datetime(df.month)
-    df["year_of_sales"] = df["month"].dt.year
-    df["month_of_sales"] = df["month"].dt.month
-    # Clean up the 'MULTI-GENERATION' entries
-    df["flat_type"] = df["flat_type"].str.replace(
-        "MULTI GENERATION", "MULTI-GENERATION"
-    )
-    # add price per sqm
-    df["price_per_sqm"] = df.resale_price / df.floor_area_sqm
-    
 df_initial_preproc(df)
 
-
+def plot_to_base64_img(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    buf.seek(0)
+    encoded = base64.b64encode(buf.read()).decode("utf-8")
+    return encoded
 
 st.set_page_config(page_title="HDB Companion", layout="wide")
 st.title("🏡 HDB Buying & Selling Companion")
@@ -57,29 +71,33 @@ user_input = None
 user_input = st.chat_input("Ask about resale prices, trends, towns, or flat types!")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-if user_input:
-    # Store user's message
 
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-    # Prepare messages with history
-    messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
-
-    # Add current user input to the message chain
-    messages.append({"role": "user", "content": user_input})
-    for msg in st.session_state.chat_history:
-        with st.chat_message(msg["role"]):
+# Display existing chat history
+for msg in st.session_state.chat_history:
+    with st.chat_message(msg["role"]):
+        if msg["role"] == "user":
             st.markdown(msg["content"])
+        elif msg["role"] == "assistant":
+            if "text" in msg:
+                st.markdown(msg["text"])
+            if "chart" in msg:
+                st.pyplot(msg["chart"])
+            if "analysis" in msg:
+                st.markdown(f"**🧠 GPT Insight:** {msg['analysis']}")
+
+# Process new input
+if user_input:
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Prepare and send message to GPT with function calling
 
     client = OpenAI(api_key=openai.api_key)
     completion = client.chat.completions.create(
         model="gpt-4o",
-        messages=[
-            {
-                "role": "user",
-                "content": user_input
-            }
-        ],
+        messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history if m["role"] == "user"],
         functions=[
             {
                 "name": "get_average_prices",
@@ -199,9 +217,27 @@ if user_input:
         ],
         function_call="auto",
     )
+
+    def get_average_prices(town: str, flat_type: str, lease_commence_date: int):
+        # Ensure column names match your dataset
+        filtered_df = df[
+            (df["town"].str.upper() == town.upper()) &
+            (df["flat_type"].str.upper() == flat_type.upper()) &
+            (df["lease_commence_date"] >= lease_commence_date)
+        ]
+
+        if filtered_df.empty:
+            return f"No data found for {flat_type} in {town} from {lease_commence_date} onwards."
+
+        avg_price = filtered_df["resale_price"].mean()
+
+        return {
+            "town": town.title(),
+            "flat_type": flat_type.upper(),
+            "average_resale_price": round(avg_price, 2)
+        }    
+
     
-
-
     @st.cache_resource
     def load_vector_db():
         loader = PyPDFLoader("buy_sell_eligibility.pdf")
@@ -222,327 +258,45 @@ if user_input:
         docs = vector_db.similarity_search(query, k=2)
         return chain.run(input_documents=docs, question=query)
 
-    def get_average_prices(town: str, flat_type: str, lease_commence_date: int):
-        # Ensure column names match your dataset
-        filtered_df = df[
-            (df["town"].str.upper() == town.upper()) &
-            (df["flat_type"].str.upper() == flat_type.upper()) &
-            (df["lease_commence_date"] >= lease_commence_date)
-        ]
+    
+    def plot_to_base64_img(fig):
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight")
+        buf.seek(0)
+        encoded = base64.b64encode(buf.read()).decode("utf-8")
+        return encoded
 
-        if filtered_df.empty:
-            return f"No data found for {flat_type} in {town} from {lease_commence_date} onwards."
-
-        avg_price = filtered_df["resale_price"].mean()
-
-        return {
-            "town": town.title(),
-            "flat_type": flat_type.upper(),
-            "average_resale_price": round(avg_price, 2)
-        }
-
-
-
-
-    # price per sqm across different town
-    def plot_sqm_all_town():
-        sns.set_style("whitegrid")
-        sns.set_palette("bright")
-        g = sns.catplot(
-            data=df,
-            x="price_per_sqm",
-            y="town",
-            kind="bar",
-            height=7,
-            aspect=1,
-            errorbar=None,
-        )
-        g.fig.suptitle("Price Per Square Meter across different town", y=1.02, fontsize=15)
-        g.set(xlabel="Town", ylabel="Price Per Square Meter")
-
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=14
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=14
-        )  # Access and set y-axis label font size
-
-        plt.xticks(rotation=0)
+    def get_gpt_analysis_for_plot(g, prompt="Analyze this HDB resale price chart."):
+        # 1. Show the chart
         st.pyplot(g.fig)
 
+        # 2. Convert the chart to base64 image
+        img_base64 = plot_to_base64_img(g)
 
-    # price per sqm across single town and flat type
-    def plot_sqm_single_twn_room( town, flat_type ):
-        df_query = df.query("flat_type == @flat_type & town == @town")
-        sns.set_style("whitegrid")
-        sns.set_palette("bright")
-
-        g = sns.catplot(
-            data=df_query,
-            x="year_of_sales",
-            y="price_per_sqm",
-            kind="bar",
-            height=5,
-            aspect=2.5,
-            errorbar=None,
+        # 3. Send to GPT-4o for analysis
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt},
+                {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}]}
+            ]
         )
-        g.fig.suptitle(
-            f"Price Per Square Meter across {town} and flat type: {flat_type}",
-            y=1.01,
-            fontsize=18,
-        )
-        g.set(xlabel="Year of sales", ylabel="Price Per Square Meter")
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=16
-        )  # Access and set x-axis label font size
 
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=16
-        )  # Access and set y-axis label font size
-        plt.xticks(rotation=45)
+        # 4. Extract content
+        analysis_text = response.choices[0].message.content
 
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-        st.pyplot(g.fig)
+        # 5. Show and store analysis
+        st.subheader("📈 GPT's Analysis")
+        st.write(analysis_text)
 
-    # mean resale price across different town
-    def plot_resale_price_all():
-        sns.set_style("whitegrid")
-        sns.set_palette("bright")
-
-        # Calculate the mean resale price for each town
-        mean_prices = df.groupby("town")["resale_price"].mean().sort_values()
-
-        # Create a new categorical order based on the sorted mean prices
-        town_order = mean_prices.index.tolist()
-
-        g = sns.catplot(
-            data=df,
-            x="town",
-            y="resale_price",
-            kind="bar",
-            height=5,
-            aspect=2.5,
-            errorbar=None,
-            order=town_order,
-        )
-        g.fig.suptitle("Mean Resale Price across different town", y=1.01, fontsize=16)
-        g.set(xlabel="Town", ylabel="Resale Price")
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=15
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=15
-        )  # Access and set y-axis label font size
-        plt.xticks(rotation=90)
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
+        # 6. Save to chat history
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "chart": g.fig,
+            "analysis": analysis_text
+        })
 
 
-    # mean resale price across single town and different flat type
-    def plot_resale_price_single(town):
-        df_query = df.query("town == @town")
-        plt.clf()
-        sns.set_style("whitegrid")
-        sns.set_palette("bright")
-        hue_order = [
-            "1 ROOM",
-            "2 ROOM",
-            "3 ROOM",
-            "4 ROOM",
-            "5 ROOM",
-            "EXECUTIVE",
-            "MULTI-GENERATION",
-        ]
-        g = sns.catplot(
-            data=df_query,
-            x="town",
-            y="resale_price",
-            kind="bar",
-            height=5,
-            aspect=2,
-            errorbar=None,
-            hue="flat_type",
-            hue_order=hue_order,
-            palette="bright",
-        )
-        g.fig.suptitle(
-            f"Mean Resale Price across {town} and different flat type", y=1.01, fontsize=16
-        )
-        g.set(xlabel="Town", ylabel="Resale Price")
-
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=15
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=15
-        )  # Access and set y-axis label font size
-
-        plt.xticks(rotation=0)
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
-
-    # mean resale price per month across all town
-    def plot_pricePerMonth_all():
-        sns.set_style("ticks")
-        sns.set_palette("bright")
-        # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
-        g = sns.catplot(
-            data=df,
-            x="month_of_sales",
-            y="resale_price",
-            kind="bar",
-            height=5,
-            aspect=2,
-            errorbar=None,
-        )
-        g.fig.suptitle(
-            "Mean resale Price per month across different town and flat type",
-            y=1.01,
-            fontsize=16,
-        )
-        g.set(xlabel="Month of Sales", ylabel="Resale Price")
-
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=15
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=15
-        )  # Access and set y-axis label font size
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
-
-
-    # mean resale price per month across single town
-    def plot_pricePerMonth_single(flat_type, town):
-        df_query = df.query("flat_type == @flat_type & town == @town")
-        sns.set_style("ticks")
-        sns.set_palette("bright")
-        # hue_order = ["1 ROOM", "2 ROOM", "3 ROOM", "4 ROOM", "5 ROOM","EXECUTIVE", "MULTI-GENERATION"]
-        g = sns.catplot(
-            data=df,
-            x="month_of_sales",
-            y="resale_price",
-            kind="bar",
-            height=5,
-            aspect=1.5,
-            errorbar=None,
-        )
-        g.fig.suptitle(
-            f"Resale Price per month across {town} and flat type: {flat_type}",
-            y=1.01,
-            fontsize=15,
-        )
-        g.set(xlabel="Month of Sales", ylabel="Resale Price")
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=14
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=14
-        )  # Access and set y-axis label font size
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
-
-
-    # resale price trend across all town
-    def plot_priceTrend_all():
-        sns.set_style("ticks")
-        sns.set_palette("bright")
-        hue_order = [
-            "1 ROOM",
-            "2 ROOM",
-            "3 ROOM",
-            "4 ROOM",
-            "5 ROOM",
-            "EXECUTIVE",
-            "MULTI-GENERATION",
-        ]
-        g = sns.relplot(
-            data=df,
-            x="month",
-            y="resale_price",
-            kind="line",
-            height=5,
-            aspect=2,
-            palette="bright",
-            errorbar=None,
-            hue="flat_type",
-            hue_order=hue_order,
-        )
-        g.fig.suptitle(f"Resale price trend across all town", y=1.01, fontsize=17)
-        g.set(xlabel="Year", ylabel="Resale Price")
-
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=16
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=16
-        )  # Access and set y-axis label font size
-
-        plt.ticklabel_format(style="plain", axis="y")
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
-
-
-    # resale price trend across single town and flat type
-    def plot_priceTrend_single( flat_type, town):
-        df_query = df.query("flat_type == @flat_type & town == @town")
-        sns.set_style("ticks")
-        sns.set_palette("bright")
-        g = sns.relplot(
-            data=df_query,
-            x="month",
-            y="resale_price",
-            kind="line",
-            height=5,
-            aspect=2,
-            errorbar=None,
-        )
-        g.fig.suptitle(
-            f"Resale price trend across {town} and flat type: {flat_type}", y=1.01, fontsize=16
-        )
-        g.set(xlabel="Year", ylabel="Resale Price")
-        g.ax.set_xlabel(
-            g.ax.get_xlabel(), fontsize=15
-        )  # Access and set x-axis label font size
-
-        g.ax.set_ylabel(
-            g.ax.get_ylabel(), fontsize=15
-        )  # Access and set y-axis label font size
-
-        # Format the y-axis tick labels to include commas using a lambda function
-        formatter = mtick.FuncFormatter(lambda x, pos: f"{int(x):,}")
-
-        g.ax.yaxis.set_major_formatter(formatter)
-
-        st.pyplot(g.fig)
 
 
     message = completion.choices[0].message
@@ -550,25 +304,30 @@ if user_input:
     if message.function_call is not None:
         fn_name = message.function_call.name
         args = json.loads(message.function_call.arguments)
+        if "town" in args:
+            args["town"] = args["town"].upper()
+
+        if "flat_type" in args:
+            args["flat_type"] = args["flat_type"].upper()
 
         if fn_name == "get_average_prices":
             result = get_average_prices(**args)
         elif fn_name == "plot_sqm_all_town":
-            result = plot_sqm_all_town(**args)
+            result = get_gpt_analysis_for_plot(plot_sqm_all_town(df,**args))
         elif fn_name == "plot_sqm_single_twn_room":
-            result = plot_sqm_single_twn_room(**args)
+            result = get_gpt_analysis_for_plot(plot_sqm_single_twn_room(df,**args))
         elif fn_name == "plot_resale_price_all":
-            result = plot_resale_price_all(**args)
+            result = get_gpt_analysis_for_plot(plot_resale_price_all(df,**args))
         elif fn_name == "plot_resale_price_single":
-            result = plot_resale_price_single(**args)
+            result = get_gpt_analysis_for_plot(plot_resale_price_single(df,**args))
         elif fn_name == "plot_pricePerMonth_all":
-            result = plot_pricePerMonth_all(**args)
+            result = get_gpt_analysis_for_plot(plot_pricePerMonth_all(df,**args))
         elif fn_name == "plot_pricePerMonth_single":
-            result = plot_pricePerMonth_single(**args)
+            result = get_gpt_analysis_for_plot(plot_pricePerMonth_single(df,**args))
         elif fn_name == "plot_priceTrend_all":
-            result = plot_priceTrend_all(**args)
+            result = get_gpt_analysis_for_plot(plot_priceTrend_all(df,**args))
         elif fn_name == "plot_priceTrend_single":
-            result = plot_priceTrend_single(**args)
+            result = get_gpt_analysis_for_plot(plot_priceTrend_single(df,**args))
         elif fn_name == "answer_pdf_question":
             result = answer_pdf_question(**args)
             st.subheader("📄 Answer from PDF")
