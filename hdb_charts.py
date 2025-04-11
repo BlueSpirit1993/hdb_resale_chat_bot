@@ -151,9 +151,9 @@ def plot_sqm_all_town_2(df, room):
     return g
 
 # price per sqm across single town and flat type
-def plot_sqm_single_twn_room(df, room, twn):
+def plot_sqm_single_twn_room(df, room, town):
     #df_initial_preproc(df)
-    df_query = df.query("flat_type == @room & town == @twn")
+    df_query = df.query("flat_type == @room & town == @town")
     sns.set_style("whitegrid")
     sns.set_palette("RdBu")
 
@@ -167,7 +167,7 @@ def plot_sqm_single_twn_room(df, room, twn):
         errorbar=None,
     )
     g.fig.suptitle(
-        f"Price Per Square Meter across {twn} and flat type: {room}",
+        f"Price Per Square Meter across {town} and flat type: {room}",
         y=1.01,
         fontsize=17,
     )
