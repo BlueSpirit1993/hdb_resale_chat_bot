@@ -45,7 +45,6 @@ from langchain.vectorstores import FAISS
 openai.api_key = st.secrets["openai"]["api_key"]
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
