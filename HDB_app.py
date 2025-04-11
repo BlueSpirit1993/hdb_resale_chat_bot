@@ -23,6 +23,7 @@ from hdb_charts import (
     data_sqm_single_twn_room,
     data_last_resale_price
 )
+import requests
 
 
 
@@ -77,9 +78,9 @@ for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         if msg["role"] == "user":
             st.markdown(msg["content"])
-        elif msg["role"] == "assistant":
-            if "text" in msg:
-                st.markdown(msg["text"])
+        elif msg["role"] == "HDB Compansion that analyses HDB trends":
+            if "content" in msg:
+                st.markdown(msg["content"])
             if "chart" in msg:
                 st.pyplot(msg["chart"])
             if "analysis" in msg:
@@ -99,6 +100,24 @@ if user_input:
         model="gpt-4o",
         messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history if m["role"] == "user"],
         functions=[
+            {
+            "name": "predict_resale_price",
+            "description": "Predict HDB resale price using a trained ML model",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                "block": {"type": "string"},
+                "street_name": {"type": "string"},
+                "town": {"type": "string"},
+                "flat_type": {"type": "string"},
+                "storey_range": {"type": "string"},
+                "floor_area_sqm": {"type": "number"},
+                "remaining_lease_year": {"type": "number"},
+                "month_year": {"type": "string", "description": "Format YYYY-MM"}
+                },
+                "required": ["block", "street_name", "town", "flat_type", "storey_range", "floor_area_sqm", "remaining_lease_year", "month_year"]
+            }
+            },
             {
                 "name": "get_average_prices",
                 "description": "Return the rows in a DataFrame about average HDB Prices for a town for a flat type from a certain year onwards",
@@ -218,24 +237,32 @@ if user_input:
         function_call="auto",
     )
 
-    def get_average_prices(town: str, flat_type: str, lease_commence_date: int):
-        # Ensure column names match your dataset
+    def get_average_prices(town: str = None, flat_type: str = None, lease_commence_date: int = 2024):
+        # Check for missing inputs
+        if not town or not flat_type or lease_commence_date is None:
+            msg = "⚠️ One or more required parameters are missing: town, flat type, or lease commence date."
+            return msg
+
+        # Filter DataFrame
         filtered_df = df[
             (df["town"].str.upper() == town.upper()) &
             (df["flat_type"].str.upper() == flat_type.upper()) &
             (df["lease_commence_date"] >= lease_commence_date)
         ]
 
+        # Handle empty data
         if filtered_df.empty:
-            return f"No data found for {flat_type} in {town} from {lease_commence_date} onwards."
+            msg = f"⚠️ No data found for {flat_type} in {town} from {lease_commence_date} onwards."
+            return msg
 
+        # Compute average price
         avg_price = filtered_df["resale_price"].mean()
+        result = f"✅ Average resale price for {flat_type} in {town} (from {lease_commence_date} onwards): ${avg_price:,.0f}"
 
-        return {
-            "town": town.title(),
-            "flat_type": flat_type.upper(),
-            "average_resale_price": round(avg_price, 2)
-        }    
+
+        return result
+
+
 
     
     @st.cache_resource
@@ -276,6 +303,7 @@ if user_input:
         # 3. Send to GPT-4o for analysis
         response = client.chat.completions.create(
             model="gpt-4o",
+            temperature=0,
             messages=[
                 {"role": "user", "content": prompt},
                 {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}]}
@@ -291,11 +319,20 @@ if user_input:
 
         # 6. Save to chat history
         st.session_state.chat_history.append({
-            "role": "assistant",
+            "role": "HDB Compansion that analyses HDB trends",
             "chart": g.fig,
             "analysis": analysis_text
         })
 
+
+
+    def predict_resale_price_via_api(args):
+        base_url = "https://demodayprediction-28523621686.asia-southeast1.run.app/predict"
+        response = requests.get(base_url, params=args)  # 👈 send as GET with query string
+        if response.status_code == 200:
+            return response.json()["HDB Price"]
+        else:
+            return f"❌ API Error: {response.status_code} - {response.text}"
 
 
 
@@ -312,6 +349,11 @@ if user_input:
 
         if fn_name == "get_average_prices":
             result = get_average_prices(**args)
+            st.write(result)
+            st.session_state.chat_history.append({
+            "role": "HDB Compansion that analyses HDB trends",
+            "content": result
+        })
         elif fn_name == "plot_sqm_all_town":
             result = get_gpt_analysis_for_plot(plot_sqm_all_town(df,**args))
         elif fn_name == "plot_sqm_single_twn_room":
@@ -330,8 +372,23 @@ if user_input:
             result = get_gpt_analysis_for_plot(plot_priceTrend_single(df,**args))
         elif fn_name == "answer_pdf_question":
             result = answer_pdf_question(**args)
-            st.subheader("📄 Answer from PDF")
+ #           st.subheader("📄 Answer from PDF")
             st.write(result)
+            st.session_state.chat_history.append({
+            "role": "HDB Compansion that analyses HDB trends",
+            "content": result
+        })
+
+        elif fn_name == "predict_resale_price":
+            prediction = predict_resale_price_via_api(args)
+            st.subheader("🏠 Predicted Resale Price")
+            st.write(f"💰 ${prediction:.2f}")
+
+            st.session_state.chat_history.append({
+                "role": "HDB Compansion that analyses HDB trends",
+                "content": f"Based on the details, the predicted resale price is **${prediction:.2f}**"
+            })
+
         
     else:
     # Send general message again without function schema
@@ -342,7 +399,7 @@ if user_input:
         result = general_response.choices[0].message.content
         st.subheader("🤖 Answer")
         st.write(result)
-    st.session_state.chat_history.append({"role": "assistant", "content": result})
+        st.session_state.chat_history.append({"role": "HDB Compansion that analyses HDB trends", "content": result})
 
     
 
