@@ -49,20 +49,25 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
 
-import asyncio
-import sys
+# import asyncio
+# import sys
 
-if sys.platform.startswith("linux") and sys.version_info >= (3, 10):
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
+# if sys.platform.startswith("linux") and sys.version_info >= (3, 10):
+#     try:
+#         asyncio.get_running_loop()
+#     except RuntimeError:
+#         asyncio.set_event_loop(asyncio.new_event_loop())
+st.set_page_config(page_title="HDB Companion", layout="wide")
+st.title("🏡 HDB Buying & Selling Companion")
+st.header("💬 Ask the Chatbot about HDB trends")
+
+@st.cache_data
+def load_data():
+    return  pd.read_csv("data_concat.csv", header=0, parse_dates=["month"],low_memory=False)
 
 
-df = pd.read_csv(
-    "data_concat.csv", header=0, parse_dates=["month"],low_memory=False
-)
 
+df = load_data()
 df_initial_preproc(df)
 
 def plot_to_base64_img(fig):
@@ -71,10 +76,6 @@ def plot_to_base64_img(fig):
     buf.seek(0)
     encoded = base64.b64encode(buf.read()).decode("utf-8")
     return encoded
-
-st.set_page_config(page_title="HDB Companion", layout="wide")
-st.title("🏡 HDB Buying & Selling Companion")
-st.header("💬 Ask the Chatbot about HDB trends")
 
 user_input = None
 user_input = st.chat_input("Ask about resale prices, trends, towns, or flat types!")
