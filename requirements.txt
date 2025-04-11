@@ -1,11 +1,6 @@
-loguru
-mkdocs
 pip
 python-dotenv
-ruff
-tqdm
-typer
--e .
+.
 streamlit
 pandas
 matplotlib
