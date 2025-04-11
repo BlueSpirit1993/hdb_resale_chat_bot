@@ -4,57 +4,6 @@ import pickle
 import requests
 from sklearn.neighbors import BallTree
 
-def preprocess_and_reconstruct_named(X):
-    numeric_cols = [
-        "floor_area_sqm",
-        "remaining_lease_year",
-        "distance_to_nearest_sch",
-        "distance_to_nearest_mrt",
-    ]
-    categorical_cols = [
-        "block",
-        "street_name",
-        "town",
-        "flat_type",
-        "region",
-        "storey_range",
-        "line",
-        "nearest_mrt_name",
-        "nearest_sch_name",
-    ]
-    date_cols = ["month_sin", "month_cos", "salesYear_fr_2017"]
-
-    columns = numeric_cols + categorical_cols + date_cols
-
-    from sklearn.impute import SimpleImputer
-    from sklearn.pipeline import Pipeline
-    from sklearn.compose import ColumnTransformer
-
-    imputed_num = Pipeline([
-        ("imputer", SimpleImputer(strategy="mean"))
-    ])
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("imputed_num", imputed_num, numeric_cols),
-            ("keep_cats", "passthrough", categorical_cols),
-            ("keep_dates", "passthrough", date_cols),
-        ]
-    )
-
-    X_processed = preprocessor.fit_transform(X)
-    df_processed = pd.DataFrame(X_processed, columns=columns)
-
-    for col in numeric_cols:
-        df_processed[col] = pd.to_numeric(df_processed[col], errors="coerce")
-    for col in date_cols:
-        df_processed[col] = pd.to_numeric(df_processed[col], errors="coerce")
-    for col in categorical_cols:
-        df_processed[col] = df_processed[col].astype("category")
-
-    return df_processed
-
-
 class Model:
     def __init__(self):
         self.categorical_cols = [
@@ -81,6 +30,8 @@ class Model:
         self.gdsch=pd.read_csv("gdsch.csv")
 
         self.mrt=pd.read_csv("mrt.csv")
+
+        self.coords = pd.read_csv("coords_with_walk_metrics.csv")
 
         self.region = {
             "SENGKANG": "North-East",
@@ -122,67 +73,44 @@ class Model:
         }
 
     def get_coordinates(self, block, street_name):
-        add = block + " " + street_name
-        url = "https://www.onemap.gov.sg/api/common/elastic/search"
-        params = {
-            "searchVal": add,
-            "returnGeom": "Y",
-            "getAddrDetails": "N",
-            "pageNum": 1
-        }
-        response = requests.get(url, params=params)
-        data = response.json()
-        results = data.get("results", [])
+        add = f"{block} {street_name}".upper()
+        row = self.coords[self.coords["add"].str.upper() == add]
 
-        if not results:
-            raise ValueError(f"No coordinates found for address: {add}")
+        if row.empty:
+            raise ValueError(f"Address '{add}' not found in coordinates dataset.")
 
-        result = results[0]
-        return float(result["LATITUDE"]), float(result["LONGITUDE"])
+        lat = row.iloc[0]["latitude"]
+        lon = row.iloc[0]["longitude"]
+        return lat, lon
 
     def get_nearest_school_info(self, block, street_name):
+        add = f"{block} {street_name}".upper()
+        row = self.coords[self.coords["add"].str.upper() == add]
 
-        lat, lon = self.get_coordinates(block, street_name)
-        gd_sch_df = self.gdsch
-
-        addr_coords = np.radians(np.array([[lat, lon]]))
-        sch_coords = np.radians(gd_sch_df[["latitude", "longitude"]].values)
-
-        tree = BallTree(sch_coords, metric="haversine")
-        distances, indices = tree.query(addr_coords, k=1)
-
-        earth_radius = 6371000
-        distance_s = distances[0][0] * earth_radius
-        idx = indices[0][0]
-        school_name = gd_sch_df.iloc[idx]["school_name"]
+        if row.empty:
+            raise ValueError(f"Address '{add}' not found in coordinates dataset.")
 
         return {
-            "distance_to_nearest_sch": distance_s,
-            "nearest_sch_name": school_name
-            }
+            "distance_to_nearest_sch": row.iloc[0]["distance_to_nearest_sch"],
+            "nearest_sch_name": row.iloc[0]["nearest_sch_name"],
+            "walk_distance_to_school": row.iloc[0].get("walk_distance_to_school", None),  # <--- ADD THIS
+        }
 
 
     def get_nearest_mrt_info(self, block, street_name):
-        lat, lon = self.get_coordinates(block, street_name)
-        mrt_df = self.mrt
+        add = f"{block} {street_name}".upper()
+        row = self.coords[self.coords["add"].str.upper() == add]
 
-        addr_coords = np.radians(np.array([[lat, lon]]))
-        mrt_coords = np.radians(mrt_df[["latitude", "longitude"]].values)
-
-        tree = BallTree(mrt_coords, metric="haversine")
-        distances, indices = tree.query(addr_coords, k=1)
-
-        earth_radius = 6371000
-        distance_m = distances[0][0] * earth_radius
-        idx = indices[0][0]
-        mrt_name=mrt_df.iloc[idx]["mrt"]
-        mrt_line = mrt_df.iloc[idx]["line"]
+        if row.empty:
+            raise ValueError(f"Address '{add}' not found in coordinates dataset.")
 
         return {
-            "distance_to_nearest_mrt": distance_m,
-            "nearest_mrt_name": mrt_name,
-            "line": mrt_line
-            }
+            "distance_to_nearest_mrt": row.iloc[0]["distance_to_nearest_mrt"],
+            "nearest_mrt_name": row.iloc[0]["nearest_mrt_name"],
+            "line": row.iloc[0]["line"],
+            "walk_distance_to_mrt": row.iloc[0].get("walk_distance_to_mrt", None),
+        }
+
 
     def get_region(self, region):
         return self.region.get(region, None)
@@ -226,8 +154,9 @@ class Model:
         preprocessed_user_query["line"] = mrt_info["line"]
         preprocessed_user_query["nearest_mrt_name"] = mrt_info["nearest_mrt_name"]
         preprocessed_user_query["nearest_sch_name"] = school_info["nearest_sch_name"]
-        preprocessed_user_query["distance_to_nearest_mrt"] = mrt_info["distance_to_nearest_mrt"]
-        preprocessed_user_query["distance_to_nearest_sch"] = school_info["distance_to_nearest_sch"]
+        preprocessed_user_query["walk_distance_to_mrt"] = mrt_info["walk_distance_to_mrt"]
+        preprocessed_user_query["walk_distance_to_school"] = school_info["walk_distance_to_school"]
+        preprocessed_user_query["GDP"] = 1000
 
         town = user_query.get("town", "").upper()
         preprocessed_user_query["region"] = self.get_region(town)
@@ -239,33 +168,12 @@ class Model:
         return pd.Series(preprocessed_user_query)
 
     def load_model(self):
-        with open("lightgbm_pipeline.pkl", "rb") as f:
+        with open("best_lgbm_pipeline.pkl", "rb") as f:
             self.pipeline = pickle.load(f)
 
     def get_preds(self, user_query):
         x = self.preprocess(user_query)
         return self.pipeline.predict(x.to_frame().T)
 
-if __name__ == "__main__":
-    from sklearn.preprocessing import FunctionTransformer
-    from sklearn.pipeline import Pipeline
-    from lightgbm import LGBMRegressor
-    import pickle
-
-    wrapped_preprocessor = FunctionTransformer(preprocess_and_reconstruct_named, validate=False)
-
-    pipeline = Pipeline([
-        ("preprocessor", wrapped_preprocessor),
-        ("model", LGBMRegressor(
-            max_depth=15,
-            n_estimators=300,
-            learning_rate=0.1,
-            objective="regression",
-            min_child_samples=20,
-            random_state=42,
-        ))
-    ])
-
-    # Save it here so it's registered under main module
-    with open("lightgbm_pipeline.pkl", "wb") as f:
-        pickle.dump(pipeline, f)
+    def fit(self, X, y):
+        self.pipeline.fit(X,y)
