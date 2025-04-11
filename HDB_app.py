@@ -50,6 +50,15 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.chains.question_answering import load_qa_chain
 
+import asyncio
+import sys
+
+if sys.platform.startswith("linux") and sys.version_info >= (3, 10):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
 
 df = pd.read_csv(
     "data_concat.csv", header=0, parse_dates=["month"],low_memory=False
