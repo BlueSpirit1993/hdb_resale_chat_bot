@@ -82,9 +82,8 @@ class Model:
         response = requests.get(url, params=params)
         data = response.json()
         result = data["results"][0]
-        if not results:
+        if not result:
             raise ValueError(f"No coordinates found for address: {add}")
-        result = results[0]
         return float(result["LATITUDE"]), float(result["LONGITUDE"])
 
     def get_nearest_school_info(self, block, street_name):
@@ -104,7 +103,7 @@ class Model:
         school_name = gd_sch_df.iloc[idx]["school_name"]
 
         return {
-            "distance_to_nearest_sch": distance_s,
+            "walk_distance_to_school": distance_s,
             "nearest_sch_name": school_name
             }
 
@@ -126,7 +125,7 @@ class Model:
         mrt_line = mrt_df.iloc[idx]["line"]
 
         return {
-            "distance_to_nearest_mrt": distance_m,
+            "walk_distance_to_mrt": distance_m,
             "nearest_mrt_name": mrt_name,
             "line": mrt_line
             }
@@ -173,8 +172,9 @@ class Model:
         preprocessed_user_query["line"] = mrt_info["line"]
         preprocessed_user_query["nearest_mrt_name"] = mrt_info["nearest_mrt_name"]
         preprocessed_user_query["nearest_sch_name"] = school_info["nearest_sch_name"]
-        preprocessed_user_query["distance_to_nearest_mrt"] = mrt_info["distance_to_nearest_mrt"]
-        preprocessed_user_query["distance_to_nearest_sch"] = school_info["distance_to_nearest_sch"]
+        preprocessed_user_query["walk_distance_to_mrt"] = mrt_info["walk_distance_to_mrt"]
+        preprocessed_user_query["walk_distance_to_school"] = school_info["walk_distance_to_school"]
+        preprocessed_user_query["GDP"] = 1000
 
         town = user_query.get("town", "").upper()
         preprocessed_user_query["region"] = self.get_region(town)
@@ -183,12 +183,17 @@ class Model:
             flat_type = user_query.get("flat_type", "").upper()
             preprocessed_user_query["floor_area_sqm"] = self.get_sqm(flat_type)
 
+        print(preprocessed_user_query)
+
         return pd.Series(preprocessed_user_query)
 
     def load_model(self):
-        with open("lightgbm_pipeline.pkl", "rb") as f:
+        with open("best_lgbm_pipeline.pkl", "rb") as f:
             self.pipeline = pickle.load(f)
 
     def get_preds(self, user_query):
         x = self.preprocess(user_query)
         return self.pipeline.predict(x.to_frame().T)
+
+    def fit(self, X, y):
+        self.pipeline.fit(X,y)
